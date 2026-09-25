@@ -1,12 +1,17 @@
 # ⚖️ Satta Thozhan (சட்டத் தோழன்)
 ### *The Citizen's Pre-Advocate Legal Navigator for India*
 
-[![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-Serverless-34A853?style=for-the-badge&logo=googlecloud&logoColor=white)](#-docker--cloud-run-deployment)
-[![Firebase Auth](https://img.shields.io/badge/Firebase_Auth-Integrated-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](#-architecture--technology-stack)
-[![Cloud Firestore](https://img.shields.io/badge/Google_Firestore-Vault-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](#-architecture--technology-stack)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Next.js 14](https://img.shields.io/badge/Next.js-14.2+-black?logo=next.js&logoColor=white)](https://nextjs.org/)
+[![Google ADK 2.0](https://img.shields.io/badge/Agent_Framework-Google_ADK_2.0-4285F4?logo=google&logoColor=white)](https://pypi.org/project/google-adk/)
+[![Gemini Flash](https://img.shields.io/badge/LLM-Gemini_Flash-FF6F00?logo=google-cloud&logoColor=white)](https://cloud.google.com/vertex-ai)
+[![Firebase Auth](https://img.shields.io/badge/Firebase_Auth-Integrated-FFCA28?logo=firebase&logoColor=black)](#-architecture--technology-stack)
+[![Cloud Firestore](https://img.shields.io/badge/Google_Firestore-Persistent_Vault-FFCA28?logo=firebase&logoColor=black)](#-architecture--technology-stack)
+[![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-Production_Ready-34A853?logo=googlecloud&logoColor=white)](#-docker--cloud-run-deployment)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 ---
-
 
 ## 🌟 Executive Summary
 
@@ -24,7 +29,16 @@ Before approaching an advocate or police station, the average Indian citizen is 
 ```mermaid
 graph TD
     User["Citizen / Common Man (Web / Mobile)"] --> NextJS["Next.js 14 UI (Bilingual: English / தமிழ்)"]
-    NextJS --> FastAPI["FastAPI Gateway (Port 8000)"]
+    
+    subgraph "Authentication & User Session"
+        NextJS --> FirebaseAuth["Firebase Auth (Google Sign-In / Guest Mode)"]
+    end
+    
+    NextJS --> FastAPI["FastAPI Gateway"]
+    
+    subgraph "Persistent Storage"
+        FastAPI --> Firestore["Google Cloud Firestore<br/>(Citizen Inquiries & Vault)"]
+    end
     
     subgraph "Backend Intelligence Core"
         FastAPI --> ADK["Google Agent Development Kit (ADK 2.0)"]
@@ -41,7 +55,7 @@ graph TD
         PrepSheetAgent --> Gemini
     end
     
-    subgraph "Deployment (Google Cloud)"
+    subgraph "Containerized Cloud Infrastructure"
         CloudRun["Google Cloud Run (Serverless Containers)"]
     end
 ```
@@ -49,10 +63,12 @@ graph TD
 ### Stack Highlights
 - **Frontend**: Next.js 14 (App Router), TypeScript, Tailwind CSS, Lucide Icons, Print-friendly CSS.
 - **Backend API**: FastAPI, Pydantic v2, Python 3.11+.
+- **Authentication**: **Firebase Authentication** supporting Google OAuth & Anonymous Guest IDs.
+- **Database & Vault**: **Google Cloud Firestore** (REST API with Application Default Credentials).
 - **AI Agent Framework**: **Google ADK 2.0** (`google-adk==2.10.0`).
 - **Foundation LLM**: **Gemini 3.8 / 3.7 / 2.5 Flash** via Google GenAI SDK and Google Cloud Vertex AI with graceful resilient fallbacks.
 - **Privacy & Security**: Automated PII masking for Indian identity artifacts (Aadhaar 12-digit, PAN card, Credit/Debit cards, Phone numbers).
-- **Deployment**: Multi-stage Docker containers configured for **Google Cloud Run**.
+- **Deployment**: Multi-stage Docker containers optimized for **Google Cloud Run**.
 
 ---
 
@@ -91,16 +107,39 @@ graph TD
   - Advocate's office notes box
 - One-click print / PDF export (`@media print` optimized).
 
+### 5. 🗄️ Persistent Case Vault ("My Cases / என் வழக்குகள்")
+- Automatically persists legal queries, evidence checklists, and prep sheets to **Google Cloud Firestore**.
+- Inquiries are indexed securely by **Firebase Auth ID** (supporting both signed-in Google users and guest identifiers).
+- Allows citizens to revisit, reload, and re-print previous consultation sheets at any time.
+
 ---
 
-## 🏆 Evaluation Criteria Alignment
+## ⚙️ Environment Configuration
 
-| Evaluation Dimension | Weight / Impact | How Satta Thozhan Addresses It |
-|---|---|---|
-| **Technical Innovation** | **High** | Built using **Google ADK 2.0** multi-agent architecture; leverages **Gemini Flash** with structured Pydantic output schemas; incorporates dual-mode Vertex AI / GenAI client with zero-downtime offline fallbacks; Indian Evidence law (BSA 2023) procedural rule modeling. |
-| **Potential Impact** | **High** | Targets 1.4 billion Indian citizens; bridges the intimidating gap between grievance occurrence and legal consultation; prevents loss of legal rights due to expired limitation periods. |
-| **Execution Quality** | **High** | End-to-end working system; bilingual support (English & Tamil); clean modular code with 100% passing test coverage; built-in automated PII redaction for Aadhaar and PAN numbers. |
-| **Business Feasibility** | **High** | Serverless containerized deployment on Google Cloud Run with zero idle cost; low token consumption using Gemini Flash; highly responsive API. |
+Templates are provided for both frontend and backend configurations:
+
+### Backend (`backend/.env`)
+Copy `backend/.env.example` to `backend/.env`:
+```bash
+GOOGLE_CLOUD_PROJECT=YOUR_PROJECT_ID
+GOOGLE_CLOUD_LOCATION=us-central1
+DEFAULT_MODEL=gemini-2.5-flash
+ENVIRONMENT=development
+# Optional if using Application Default Credentials (gcloud auth application-default login):
+GEMINI_API_KEY=YOUR_GEMINI_API_KEY
+```
+
+### Frontend (`frontend/.env.local`)
+Copy `frontend/.env.example` to `frontend/.env.local`:
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=YOUR_PROJECT_ID
+NEXT_PUBLIC_FIREBASE_API_KEY=YOUR_FIREBASE_API_KEY
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=YOUR_PROJECT_ID.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=YOUR_PROJECT_ID.firebasestorage.app
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=YOUR_SENDER_ID
+NEXT_PUBLIC_FIREBASE_APP_ID=YOUR_APP_ID
+```
 
 ---
 
@@ -111,10 +150,9 @@ graph TD
 - Node.js 18+ (Node 20 or 24 recommended)
 - Git
 
-### 1. Clone & Set Up Backend
+### 1. Set Up & Run Backend
 
 ```bash
-# Navigate to backend directory
 cd backend
 
 # Create and activate virtual environment
@@ -137,11 +175,11 @@ API Documentation will be live at `http://127.0.0.1:8000/docs`.
 
 ### 2. Set Up & Run Frontend
 
-In a new terminal:
+In a separate terminal:
 ```bash
 cd frontend
 
-# Install packages
+# Install dependencies
 npm install
 
 # Build for production (verifies TypeScript & ESLint)
@@ -154,7 +192,7 @@ Open your browser and navigate to **`http://localhost:3000`**.
 
 ---
 
-## 🐳 Docker & Container Deployment
+## 🐳 Docker & Cloud Run Deployment
 
 ### Running locally with Docker Compose:
 ```bash
@@ -168,7 +206,7 @@ docker-compose up --build
 # Set your Google Cloud project
 gcloud config set project YOUR_PROJECT_ID
 
-# Deploy Backend to Cloud Run
+# 1. Deploy Backend to Cloud Run
 gcloud run deploy satta-thozhan-backend \
     --source ./backend \
     --platform managed \
@@ -176,13 +214,13 @@ gcloud run deploy satta-thozhan-backend \
     --allow-unauthenticated \
     --set-env-vars="DEFAULT_MODEL=gemini-2.5-flash,GOOGLE_CLOUD_LOCATION=us-central1"
 
-# Deploy Frontend to Cloud Run
+# 2. Deploy Frontend to Cloud Run
 gcloud run deploy satta-thozhan-frontend \
     --source ./frontend \
     --platform managed \
     --region us-central1 \
     --allow-unauthenticated \
-    --set-env-vars="NEXT_PUBLIC_API_URL=https://satta-thozhan-backend-[hash].run.app"
+    --set-env-vars="NEXT_PUBLIC_API_URL=https://YOUR_BACKEND_URL.run.app"
 ```
 
 ---
@@ -190,9 +228,9 @@ gcloud run deploy satta-thozhan-frontend \
 ## 🔒 Security & Privacy Features
 - **No PII Transmission**: Automated regex masking of 12-digit Indian Aadhaar numbers, 10-character PAN identifiers, and 16-digit financial cards before any prompt leaves the application boundary.
 - **Statutory Guardrails**: Clear, persistent disclaimers ensuring compliance with the *Advocates Act, 1961* and Bar Council of India guidelines.
-- **CORS & Environment Controls**: Strictly configured origin headers and credential management.
+- **Zero-Secret Push Compliance**: No private API keys, service account credentials, passwords, or emails committed to the repository.
 
 ---
 
 ## 📜 License
-Released under the [MIT License](LICENSE). Built for the AI Hackathon 2026.
+Released under the [MIT License](LICENSE).
