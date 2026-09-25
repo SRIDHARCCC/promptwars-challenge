@@ -3,7 +3,8 @@ import {
   ChecklistResponse,
   NoticeAnalysisResponse,
   PrepSheetResponse,
-  TimelineEvent
+  TimelineEvent,
+  SavedCase
 } from "@/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -93,3 +94,42 @@ export async function generatePrepSheet(payload: {
   }
   return res.json();
 }
+
+export async function saveCaseToFirestore(payload: {
+  id?: string;
+  auth_id: string;
+  client_name?: string;
+  client_email?: string | null;
+  category: string;
+  narrative: string;
+  language?: string;
+  triage_result?: TriageResponse;
+  evidence_checklist?: {
+    ready?: string[];
+    missing?: string[];
+  };
+  prep_sheet?: PrepSheetResponse;
+}): Promise<SavedCase> {
+  const res = await fetch(`${API_BASE_URL}/api/cases`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || "Failed to save case in Firestore");
+  }
+  return res.json();
+}
+
+export async function fetchUserCases(auth_id: string): Promise<SavedCase[]> {
+  const res = await fetch(`${API_BASE_URL}/api/cases?auth_id=${encodeURIComponent(auth_id)}`, {
+    method: "GET",
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || "Failed to fetch user cases from Firestore");
+  }
+  return res.json();
+}
+

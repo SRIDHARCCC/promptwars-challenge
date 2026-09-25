@@ -23,10 +23,11 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
-# Secrets
+# Secrets & Environment configs
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 *.pem
 service-account*.json
 credentials.json
+

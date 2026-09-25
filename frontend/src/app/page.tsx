@@ -7,35 +7,109 @@ import { TriageWizard } from "@/components/TriageWizard";
 import { ChecklistViewer } from "@/components/ChecklistViewer";
 import { NoticeAuditor } from "@/components/NoticeAuditor";
 import { PrepSheetModal } from "@/components/PrepSheetModal";
-import { LanguageMode, TriageResponse } from "@/types";
+import { SavedCasesViewer } from "@/components/SavedCasesViewer";
+import { LanguageMode, TriageResponse, SavedCase } from "@/types";
 import { translations } from "@/lib/translations";
+import { useAuth } from "@/context/AuthContext";
+import { saveCaseToFirestore } from "@/lib/api";
 import {
   Sparkles,
   FileCheck2,
-  ShieldAlert
+  ShieldAlert,
+  FolderClock
 } from "lucide-react";
 
 export default function Home() {
   const [language, setLanguage] = useState<LanguageMode>("en");
-  const [currentStep, setCurrentStep] = useState<"triage" | "checklist" | "notice">("triage");
+  const [currentStep, setCurrentStep] = useState<"triage" | "checklist" | "notice" | "saved_cases">("triage");
   
   // Cross-step State
+  const [currentCaseId, setCurrentCaseId] = useState<string | undefined>(undefined);
   const [triageData, setTriageData] = useState<TriageResponse | null>(null);
   const [narrative, setNarrative] = useState<string>("");
   const [readyDocs, setReadyDocs] = useState<string[]>([]);
   const [missingDocs, setMissingDocs] = useState<string[]>([]);
   const [isPrepSheetOpen, setIsPrepSheetOpen] = useState(false);
 
+  const { authId, userName, userEmail } = useAuth();
   const t = translations[language];
 
-  const handleTriageComplete = (data: TriageResponse, text: string) => {
+  const handleTriageComplete = async (data: TriageResponse, text: string) => {
     setTriageData(data);
     setNarrative(text);
+
+    // Persist to Google Cloud Firestore linked to Firebase Auth ID
+    try {
+      const saved = await saveCaseToFirestore({
+        id: currentCaseId,
+        auth_id: authId,
+        client_name: userName,
+        client_email: userEmail,
+        category: data.category,
+        narrative: text,
+        language: language,
+        triage_result: data
+      });
+      if (saved?.id) {
+        setCurrentCaseId(saved.id);
+      }
+    } catch (err) {
+      console.warn("Auto-saving to Firestore notice:", err);
+    }
   };
 
-  const handleOpenPrepSheet = (ready: string[], missing: string[]) => {
+  const handleOpenPrepSheet = async (ready: string[], missing: string[]) => {
     setReadyDocs(ready);
     setMissingDocs(missing);
+    setIsPrepSheetOpen(true);
+
+    // Update Firestore with document evidence status
+    if (triageData) {
+      try {
+        await saveCaseToFirestore({
+          id: currentCaseId,
+          auth_id: authId,
+          client_name: userName,
+          client_email: userEmail,
+          category: triageData.category,
+          narrative: narrative,
+          language: language,
+          triage_result: triageData,
+          evidence_checklist: { ready, missing }
+        });
+      } catch (err) {
+        console.warn("Updating checklist in Firestore notice:", err);
+      }
+    }
+  };
+
+  const handleSelectCaseFromHistory = (caseItem: SavedCase) => {
+    setCurrentCaseId(caseItem.id);
+    setNarrative(caseItem.narrative || "");
+    if (caseItem.triage_result) {
+      setTriageData(caseItem.triage_result);
+    }
+    if (caseItem.evidence_checklist?.ready) {
+      setReadyDocs(caseItem.evidence_checklist.ready);
+    }
+    if (caseItem.evidence_checklist?.missing) {
+      setMissingDocs(caseItem.evidence_checklist.missing);
+    }
+    setCurrentStep("checklist");
+  };
+
+  const handleViewPrepSheetFromHistory = (caseItem: SavedCase) => {
+    setCurrentCaseId(caseItem.id);
+    setNarrative(caseItem.narrative || "");
+    if (caseItem.triage_result) {
+      setTriageData(caseItem.triage_result);
+    }
+    if (caseItem.evidence_checklist?.ready) {
+      setReadyDocs(caseItem.evidence_checklist.ready);
+    }
+    if (caseItem.evidence_checklist?.missing) {
+      setMissingDocs(caseItem.evidence_checklist.missing);
+    }
     setIsPrepSheetOpen(true);
   };
 
@@ -82,6 +156,18 @@ export default function Home() {
             <ShieldAlert className="w-4 h-4 shrink-0" />
             <span>{t.step3}</span>
           </button>
+
+          <button
+            onClick={() => setCurrentStep("saved_cases")}
+            className={`flex items-center space-x-2 py-3 px-4 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap transition-colors ${
+              currentStep === "saved_cases"
+                ? "border-amber-500 text-amber-400 font-bold"
+                : "border-transparent text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            <FolderClock className="w-4 h-4 shrink-0" />
+            <span>{language === "ta" ? "என் வழக்குகள் (Firestore)" : "My Cases (Firestore)"}</span>
+          </button>
         </div>
 
         {/* Tab Content Panes */}
@@ -105,6 +191,14 @@ export default function Home() {
         {currentStep === "notice" && (
           <NoticeAuditor language={language} />
         )}
+
+        {currentStep === "saved_cases" && (
+          <SavedCasesViewer
+            language={language}
+            onSelectCase={handleSelectCaseFromHistory}
+            onViewPrepSheet={handleViewPrepSheetFromHistory}
+          />
+        )}
       </main>
 
       {/* Modal for Step 4: 1-Page Prep Sheet */}
@@ -126,7 +220,7 @@ export default function Home() {
             <strong>Satta Thozhan (சட்டத் தோழன்)</strong> • Indian Pre-Advocate Legal Triage Platform
           </p>
           <p className="text-[11px] text-slate-500">
-            Powered by Google ADK 2.0 & Gemini 3.8/3.7 Flash • Bar Council of India Ethical Guardrails
+            Powered by Google ADK 2.0 & Gemini Flash • Firebase Auth & Google Cloud Firestore Vault
           </p>
         </div>
       </footer>

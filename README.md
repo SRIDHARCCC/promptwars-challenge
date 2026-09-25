@@ -1,14 +1,12 @@
 # ⚖️ Satta Thozhan (சட்டத் தோழன்)
 ### *The Citizen's Pre-Advocate Legal Navigator for India*
 
-[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![Next.js 14](https://img.shields.io/badge/Next.js-14.2+-black?logo=next.js&logoColor=white)](https://nextjs.org/)
-[![Google ADK 2.0](https://img.shields.io/badge/Agent_Framework-Google_ADK_2.0-4285F4?logo=google&logoColor=white)](https://pypi.org/project/google-adk/)
-[![Gemini Flash](https://img.shields.io/badge/LLM-Gemini_Flash-FF6F00?logo=google-cloud&logoColor=white)](https://cloud.google.com/vertex-ai)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-Serverless-34A853?style=for-the-badge&logo=googlecloud&logoColor=white)](#-docker--cloud-run-deployment)
+[![Firebase Auth](https://img.shields.io/badge/Firebase_Auth-Integrated-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](#-architecture--technology-stack)
+[![Cloud Firestore](https://img.shields.io/badge/Google_Firestore-Vault-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](#-architecture--technology-stack)
 
 ---
+
 
 ## 🌟 Executive Summary
 

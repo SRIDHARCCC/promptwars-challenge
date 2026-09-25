@@ -86,3 +86,22 @@ export interface PrepSheetResponse {
 }
 
 export type LanguageMode = "en" | "ta";
+
+export interface SavedCase {
+  id: string;
+  auth_id: string;
+  client_name?: string;
+  client_email?: string | null;
+  category: string;
+  narrative: string;
+  language?: string;
+  triage_result?: TriageResponse;
+  evidence_checklist?: {
+    ready?: string[];
+    missing?: string[];
+  };
+  prep_sheet?: PrepSheetResponse;
+  created_at?: string;
+  updated_at?: string;
+}
+
