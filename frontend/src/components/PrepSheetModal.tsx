@@ -59,35 +59,53 @@ export function PrepSheetModal({
     load();
   }, [category, narrative, readyDocs, missingDocs, language, clientName]);
 
+  // Close on Escape key press for keyboard accessibility
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   const handlePrint = () => {
     window.print();
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex justify-center items-center p-3 sm:p-6 overflow-y-auto">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="prep-sheet-dialog-title"
+      className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex justify-center items-center p-3 sm:p-6 overflow-y-auto"
+    >
       <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden my-auto">
         {/* Top Modal Controls */}
         <div className="p-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between shrink-0 print:hidden">
           <div className="flex items-center space-x-2">
-            <Scale className="w-5 h-5 text-amber-400" />
-            <h3 className="font-bold text-white text-base">
+            <Scale className="w-5 h-5 text-amber-400" aria-hidden="true" />
+            <h2 id="prep-sheet-dialog-title" className="font-bold text-white text-base">
               {t.step4} (1-Page Briefing)
-            </h3>
+            </h2>
           </div>
 
           <div className="flex items-center space-x-2">
             <button
               onClick={handlePrint}
-              className="inline-flex items-center space-x-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-3.5 py-1.5 rounded-lg text-xs transition-colors shadow"
+              aria-label="Print advocate briefing sheet"
+              className="inline-flex items-center space-x-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-3.5 py-1.5 rounded-lg text-xs transition-colors shadow focus:outline-none focus:ring-2 focus:ring-amber-300"
             >
-              <Printer className="w-3.5 h-3.5" />
+              <Printer className="w-3.5 h-3.5" aria-hidden="true" />
               <span>{t.printPrepSheet}</span>
             </button>
             <button
               onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+              aria-label="Close prep sheet dialog"
+              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400"
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -96,20 +114,21 @@ export function PrepSheetModal({
         <div className="p-6 sm:p-8 overflow-y-auto space-y-6 text-slate-200 print:text-black print:bg-white print:p-4 print:space-y-4">
           {/* Printable name edit control */}
           <div className="print:hidden flex items-center space-x-2 bg-slate-950 border border-slate-800 p-3 rounded-xl">
-            <label className="text-xs font-semibold text-slate-400">
+            <label htmlFor="prepsheet-client-name" className="text-xs font-semibold text-slate-300">
               Client Name on Sheet:
             </label>
             <input
+              id="prepsheet-client-name"
               type="text"
               value={clientName}
               onChange={(e) => setClientName(e.target.value)}
-              className="bg-slate-900 border border-slate-700 px-2 py-1 rounded text-xs text-white"
+              className="bg-slate-900 border border-slate-700 px-2.5 py-1 rounded text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
             />
           </div>
 
           {loading ? (
-            <div className="py-16 text-center">
-              <div className="inline-block w-8 h-8 border-3 border-amber-500 border-t-transparent rounded-full animate-spin mb-3" />
+            <div className="py-16 text-center" aria-live="polite">
+              <div className="inline-block w-8 h-8 border-3 border-amber-500 border-t-transparent rounded-full animate-spin mb-3" aria-hidden="true" />
               <p className="text-sm text-slate-400">Compiling Advocate Consultation Prep Sheet...</p>
             </div>
           ) : prepSheet ? (

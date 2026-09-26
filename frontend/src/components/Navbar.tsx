@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Scale, ShieldCheck, LogOut, LogIn, UserCheck } from "lucide-react";
+import { Scale, ShieldCheck, LogOut, LogIn, UserCheck, Info, X } from "lucide-react";
 import { LanguageMode } from "@/types";
 import { translations } from "@/lib/translations";
 import { useAuth } from "@/context/AuthContext";
@@ -13,7 +13,18 @@ interface NavbarProps {
 
 export function Navbar({ language, onLanguageChange }: NavbarProps) {
   const t = translations[language];
-  const { user, authId, userName, signInWithGoogle, signInGuest, signOutUser } = useAuth();
+  const {
+    user,
+    authId,
+    userName,
+    isGuest,
+    signingIn,
+    authNotice,
+    dismissNotice,
+    signInWithGoogle,
+    signInGuest,
+    signOutUser
+  } = useAuth();
 
   return (
     <header className="border-b border-slate-800 bg-slate-900/95 backdrop-blur sticky top-0 z-50">
@@ -45,42 +56,70 @@ export function Navbar({ language, onLanguageChange }: NavbarProps) {
 
           {/* User Auth Info & Actions */}
           <div className="flex items-center space-x-2">
-            {user ? (
+            {user || isGuest ? (
               <div className="flex items-center space-x-2 bg-slate-800/80 border border-slate-700/80 rounded-xl px-2.5 py-1 text-xs">
-                <div className="w-6 h-6 rounded-full bg-amber-500 text-slate-950 font-bold flex items-center justify-center text-[10px]">
+                <div
+                  className={`w-6 h-6 rounded-full font-bold flex items-center justify-center text-[10px] ${
+                    user ? "bg-amber-500 text-slate-950" : "bg-emerald-500 text-slate-950"
+                  }`}
+                  aria-hidden="true"
+                >
                   {userName.charAt(0).toUpperCase()}
                 </div>
                 <div className="hidden sm:block text-left">
-                  <p className="font-semibold text-slate-200 text-[11px] leading-tight truncate max-w-[100px]">
-                    {userName}
-                  </p>
+                  <div className="flex items-center space-x-1.5">
+                    <p className="font-semibold text-slate-200 text-[11px] leading-tight truncate max-w-[110px]">
+                      {userName}
+                    </p>
+                    {isGuest && (
+                      <span className="text-[9px] bg-slate-700 text-emerald-400 px-1 py-0.2 rounded font-mono">
+                        Guest
+                      </span>
+                    )}
+                  </div>
                   <p className="text-[10px] text-slate-400 font-mono">
                     ID: {authId.slice(0, 6)}...
                   </p>
                 </div>
+                {isGuest && (
+                  <button
+                    onClick={signInWithGoogle}
+                    disabled={signingIn}
+                    title="Connect Google Account"
+                    aria-label="Connect Google Account"
+                    className="p-1 hover:text-amber-400 text-slate-400 transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400 rounded disabled:opacity-50"
+                  >
+                    <LogIn className="w-3.5 h-3.5" aria-hidden="true" />
+                  </button>
+                )}
                 <button
                   onClick={signOutUser}
                   title="Sign Out"
-                  className="p-1 hover:text-rose-400 text-slate-400 transition-colors"
+                  aria-label="Sign out of account"
+                  className="p-1 hover:text-rose-400 text-slate-400 transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400 rounded"
                 >
-                  <LogOut className="w-3.5 h-3.5" />
+                  <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
                 </button>
               </div>
             ) : (
               <div className="flex items-center space-x-1.5">
                 <button
                   onClick={signInWithGoogle}
-                  className="inline-flex items-center space-x-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors"
+                  disabled={signingIn}
+                  aria-label="Sign in with Google"
+                  className="inline-flex items-center space-x-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:opacity-50"
                 >
-                  <LogIn className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Google Sign In</span>
+                  <LogIn className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />
+                  <span>{signingIn ? "Signing In..." : "Google Sign In"}</span>
                 </button>
                 <button
                   onClick={signInGuest}
+                  disabled={signingIn}
                   title="Demo / Guest Login"
-                  className="hidden sm:inline-flex items-center space-x-1 bg-slate-800/60 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700/60 px-2.5 py-1.5 rounded-xl text-xs transition-colors"
+                  aria-label="Continue as Guest"
+                  className="hidden sm:inline-flex items-center space-x-1 bg-slate-800/60 hover:bg-slate-800 text-slate-300 hover:text-slate-100 border border-slate-700/60 px-2.5 py-1.5 rounded-xl text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:opacity-50"
                 >
-                  <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
+                  <UserCheck className="w-3.5 h-3.5 text-emerald-400" aria-hidden="true" />
                   <span>Guest</span>
                 </button>
               </div>
@@ -88,10 +127,16 @@ export function Navbar({ language, onLanguageChange }: NavbarProps) {
           </div>
 
           {/* Bilingual Language Switcher */}
-          <div className="flex items-center bg-slate-800 border border-slate-700 rounded-lg p-0.5 text-xs font-medium">
+          <div
+            role="group"
+            aria-label="Language selection"
+            className="flex items-center bg-slate-800 border border-slate-700 rounded-lg p-0.5 text-xs font-medium"
+          >
             <button
               onClick={() => onLanguageChange("en")}
-              className={`px-2.5 py-1 rounded-md transition-colors ${
+              aria-label="Switch language to English"
+              aria-pressed={language === "en"}
+              className={`px-2.5 py-1 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400 ${
                 language === "en"
                   ? "bg-amber-500 text-slate-950 font-semibold shadow"
                   : "text-slate-300 hover:text-white"
@@ -101,7 +146,9 @@ export function Navbar({ language, onLanguageChange }: NavbarProps) {
             </button>
             <button
               onClick={() => onLanguageChange("ta")}
-              className={`px-2.5 py-1 rounded-md transition-colors ${
+              aria-label="Switch language to Tamil"
+              aria-pressed={language === "ta"}
+              className={`px-2.5 py-1 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400 ${
                 language === "ta"
                   ? "bg-amber-500 text-slate-950 font-semibold shadow"
                   : "text-slate-300 hover:text-white"
@@ -112,6 +159,26 @@ export function Navbar({ language, onLanguageChange }: NavbarProps) {
           </div>
         </div>
       </div>
+
+      {authNotice && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="bg-amber-950/80 border-t border-b border-amber-600/40 px-4 py-2 flex items-center justify-between text-xs text-amber-200"
+        >
+          <div className="flex items-center space-x-2 max-w-5xl mx-auto flex-1 px-2">
+            <Info className="w-4 h-4 text-amber-400 shrink-0" aria-hidden="true" />
+            <p className="leading-snug">{authNotice}</p>
+          </div>
+          <button
+            onClick={dismissNotice}
+            aria-label="Dismiss authentication notification"
+            className="p-1 hover:text-white text-amber-300 transition-colors rounded focus:outline-none focus:ring-2 focus:ring-amber-400 shrink-0"
+          >
+            <X className="w-3.5 h-3.5" aria-hidden="true" />
+          </button>
+        </div>
+      )}
     </header>
   );
 }

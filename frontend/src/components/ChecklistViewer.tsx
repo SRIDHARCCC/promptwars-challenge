@@ -121,7 +121,14 @@ export function ChecklistViewer({ language, category, narrative, onOpenPrepSheet
               <span className="text-slate-300">{t.readinessTracker}</span>
               <span className="text-amber-400">{readinessPercent}%</span>
             </div>
-            <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+            <div
+              role="progressbar"
+              aria-valuenow={readinessPercent}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={t.readinessTracker}
+              className="w-full bg-slate-800 h-2 rounded-full overflow-hidden"
+            >
               <div
                 className="bg-gradient-to-r from-amber-500 to-emerald-500 h-full rounded-full transition-all duration-300"
                 style={{ width: `${readinessPercent}%` }}
@@ -134,40 +141,67 @@ export function ChecklistViewer({ language, category, narrative, onOpenPrepSheet
         </div>
 
         {/* Tab Controls */}
-        <div className="flex space-x-2 mt-6 border-b border-slate-800 pb-3">
+        <div
+          role="tablist"
+          aria-label="Document classification tabs"
+          className="flex space-x-2 mt-6 border-b border-slate-800 pb-3"
+        >
           <button
+            role="tab"
+            id="tab-mandatory-docs"
+            aria-selected={activeTab === "mandatory"}
+            aria-controls="panel-docs-list"
             onClick={() => setActiveTab("mandatory")}
-            className={`text-xs sm:text-sm font-semibold px-4 py-2 rounded-lg transition-colors flex items-center space-x-2 ${
+            className={`text-xs sm:text-sm font-semibold px-4 py-2 rounded-lg transition-colors flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-amber-400 ${
               activeTab === "mandatory"
                 ? "bg-amber-500 text-slate-950 font-bold"
                 : "bg-slate-800 text-slate-300 hover:text-white"
             }`}
           >
-            <FileCheck className="w-4 h-4" />
+            <FileCheck className="w-4 h-4" aria-hidden="true" />
             <span>{t.mandatoryTab} ({mandatoryDocs.length})</span>
           </button>
           <button
+            role="tab"
+            id="tab-supportive-docs"
+            aria-selected={activeTab === "supportive"}
+            aria-controls="panel-docs-list"
             onClick={() => setActiveTab("supportive")}
-            className={`text-xs sm:text-sm font-semibold px-4 py-2 rounded-lg transition-colors flex items-center space-x-2 ${
+            className={`text-xs sm:text-sm font-semibold px-4 py-2 rounded-lg transition-colors flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-amber-400 ${
               activeTab === "supportive"
                 ? "bg-amber-500 text-slate-950 font-bold"
                 : "bg-slate-800 text-slate-300 hover:text-white"
             }`}
           >
-            <FileQuestion className="w-4 h-4" />
+            <FileQuestion className="w-4 h-4" aria-hidden="true" />
             <span>{t.supportiveTab} ({supportiveDocs.length})</span>
           </button>
         </div>
 
         {/* Document Items List */}
-        <div className="mt-4 space-y-3">
+        <div
+          id="panel-docs-list"
+          role="tabpanel"
+          aria-labelledby={activeTab === "mandatory" ? "tab-mandatory-docs" : "tab-supportive-docs"}
+          className="mt-4 space-y-3"
+        >
           {(activeTab === "mandatory" ? mandatoryDocs : supportiveDocs).map((item) => {
             const isChecked = checkedIds.has(item.id);
             return (
               <div
                 key={item.id}
+                role="checkbox"
+                aria-checked={isChecked}
+                tabIndex={0}
                 onClick={() => toggleCheck(item.id)}
-                className={`p-4 rounded-xl border transition-all cursor-pointer select-none ${
+                onKeyDown={(e) => {
+                  if (e.key === " " || e.key === "Enter") {
+                    e.preventDefault();
+                    toggleCheck(item.id);
+                  }
+                }}
+                aria-label={`${item.name}. ${isChecked ? "Marked as ready" : "Marked as pending"}`}
+                className={`p-4 rounded-xl border transition-all cursor-pointer select-none focus:outline-none focus:ring-2 focus:ring-amber-400 ${
                   isChecked
                     ? "bg-emerald-950/20 border-emerald-800/40"
                     : "bg-slate-950/60 border-slate-800 hover:border-slate-700"
@@ -175,16 +209,13 @@ export function ChecklistViewer({ language, category, narrative, onOpenPrepSheet
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start space-x-3">
-                    <button
-                      type="button"
-                      className="mt-0.5 text-slate-400 hover:text-white transition-colors"
-                    >
+                    <div className="mt-0.5 text-slate-400" aria-hidden="true">
                       {isChecked ? (
                         <CheckSquare className="w-5 h-5 text-emerald-400" />
                       ) : (
-                        <Square className="w-5 h-5 text-slate-600" />
+                        <Square className="w-5 h-5 text-slate-400" />
                       )}
-                    </button>
+                    </div>
                     <div>
                       <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                         <span className={`text-sm font-semibold ${isChecked ? "text-emerald-200" : "text-slate-100"}`}>
@@ -206,7 +237,7 @@ export function ChecklistViewer({ language, category, narrative, onOpenPrepSheet
                         <span className="text-sky-300 text-[11px] font-medium">
                           <strong>{t.evidentiaryValue}</strong> {item.evidentiary_value}
                         </span>
-                        <span className="text-slate-500 hidden sm:inline">•</span>
+                        <span className="text-slate-400 hidden sm:inline" aria-hidden="true">•</span>
                         <span className="text-amber-400/90 text-[11px]">
                           <strong>{t.howToObtain}</strong> {item.how_to_obtain}
                         </span>

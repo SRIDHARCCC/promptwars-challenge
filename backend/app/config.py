@@ -18,13 +18,14 @@ class Settings(BaseSettings):
     DEFAULT_MODEL: str = os.getenv("DEFAULT_MODEL", "gemini-2.5-flash")
     FALLBACK_MODEL: str = "gemini-2.5-flash"
     
-    # CORS
+    # CORS - Explicit allowed origins (prevent wildcard with allow_credentials=True vulnerability)
+    # Additional origins can be passed via CORS_ORIGINS env var as comma-separated values.
+    # Cloud Run deployments are dynamically permitted via allow_origin_regex in main.py.
     CORS_ORIGINS: List[str] = [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:8000",
-        "http://127.0.0.1:8000",
-        "*"
+        origin.strip() for origin in os.getenv(
+            "CORS_ORIGINS",
+            "http://localhost:3000,http://127.0.0.1:3000,http://localhost:8000,http://127.0.0.1:8000"
+        ).split(",") if origin.strip()
     ]
     
     # Legal Disclaimer

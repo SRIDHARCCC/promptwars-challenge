@@ -74,10 +74,11 @@ export function SavedCasesViewer({ language, onSelectCase, onViewPrepSheet }: Pr
             <button
               onClick={loadCases}
               disabled={loading}
-              className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-colors border border-slate-700"
+              className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-colors border border-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-400"
               title="Refresh Firestore"
+              aria-label="Refresh saved consultations from Firestore"
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -85,17 +86,17 @@ export function SavedCasesViewer({ language, onSelectCase, onViewPrepSheet }: Pr
         {/* List of Consultations */}
         <div className="mt-6 space-y-4">
           {loading ? (
-            <div className="py-12 text-center">
-              <div className="inline-block w-7 h-7 border-3 border-amber-500 border-t-transparent rounded-full animate-spin mb-3" />
+            <div className="py-12 text-center" aria-live="polite">
+              <div className="inline-block w-7 h-7 border-3 border-amber-500 border-t-transparent rounded-full animate-spin mb-3" aria-hidden="true" />
               <p className="text-xs text-slate-400">Loading cases from Google Cloud Firestore...</p>
             </div>
           ) : cases.length === 0 ? (
-            <div className="py-12 text-center bg-slate-950/40 border border-slate-800/80 rounded-xl p-8">
-              <FolderOpen className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+            <div className="py-12 text-center bg-slate-950/40 border border-slate-800/80 rounded-xl p-8" role="status">
+              <FolderOpen className="w-10 h-10 text-slate-500 mx-auto mb-3" aria-hidden="true" />
               <p className="text-sm font-semibold text-slate-300">
                 {language === "ta" ? "வழக்குகள் எதுவும் இல்லை" : "No Saved Consultations Found"}
               </p>
-              <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+              <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
                 {language === "ta"
                   ? "படி 1-ல் உங்கள் புகாரை சமர்ப்பித்ததும், அது தானாகவே Firestore-ல் சேமிக்கப்படும்."
                   : "When you analyze a grievance in Step 1 or generate a Prep Sheet, it is saved persistently to Firestore under your Firebase Auth ID."}
@@ -125,7 +126,7 @@ export function SavedCasesViewer({ language, onSelectCase, onViewPrepSheet }: Pr
                         {urgency} Urgency
                       </span>
                       <span className="text-[11px] text-slate-400 flex items-center space-x-1">
-                        <Calendar className="w-3 h-3" />
+                        <Calendar className="w-3 h-3" aria-hidden="true" />
                         <span>{dateStr}</span>
                       </span>
                     </div>
@@ -144,18 +145,20 @@ export function SavedCasesViewer({ language, onSelectCase, onViewPrepSheet }: Pr
                   <div className="flex items-center space-x-2 shrink-0">
                     <button
                       onClick={() => onSelectCase(c)}
-                      className="inline-flex items-center space-x-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-3 py-2 rounded-lg transition-colors border border-slate-700"
+                      aria-label={`Reload consultation: ${c.category}`}
+                      className="inline-flex items-center space-x-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-3 py-2 rounded-lg transition-colors border border-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-400"
                     >
                       <span>Reload Case</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
+                      <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
                     </button>
 
                     {c.prep_sheet && (
                       <button
                         onClick={() => onViewPrepSheet(c)}
-                        className="inline-flex items-center space-x-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold px-3 py-2 rounded-lg transition-colors shadow"
+                        aria-label={`View Prep Sheet for consultation: ${c.category}`}
+                        className="inline-flex items-center space-x-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold px-3 py-2 rounded-lg transition-colors shadow focus:outline-none focus:ring-2 focus:ring-amber-300"
                       >
-                        <FileText className="w-3.5 h-3.5" />
+                        <FileText className="w-3.5 h-3.5" aria-hidden="true" />
                         <span>Prep Sheet</span>
                       </button>
                     )}

@@ -1,15 +1,16 @@
 """
 Google Cloud Firestore Persistence Service for Satta Thozhan.
 Stores per-customer legal queries and prep-sheets indexed by Firebase Auth ID.
-Uses Google Application Default Credentials (ADC).
+Uses Google Application Default Credentials (ADC) and httpx for async non-blocking execution.
+Implements indexed structured queries (runQuery) to avoid full collection scans.
 """
 
 import json
 import logging
-import urllib.request
-import urllib.error
+import asyncio
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+import httpx
 import google.auth
 from google.auth.transport.requests import Request
 from app.config import settings
@@ -89,18 +90,16 @@ class FirestoreService:
         self.project_id = project_id or settings.GOOGLE_CLOUD_PROJECT or "default"
         self.base_url = f"https://firestore.googleapis.com/v1/projects/{self.project_id}/databases/(default)/documents"
 
-    def save_consultation(self, case_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Saves a citizen legal consultation query to the 'consultations' collection."""
-        token = _get_access_token()
+    async def save_consultation_async(self, case_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Asynchronously saves a citizen legal consultation query to the 'consultations' collection."""
         now_iso = datetime.now(timezone.utc).isoformat()
-        
-        # Ensure timestamp and ID
         case_id = case_data.get("id") or f"case_{int(datetime.now(timezone.utc).timestamp() * 1000)}"
         case_data["id"] = case_id
         case_data["updated_at"] = now_iso
         if "created_at" not in case_data:
             case_data["created_at"] = now_iso
 
+        token = await asyncio.to_thread(_get_access_token)
         if not token:
             logger.info(f"Storing consultation {case_id} in local storage fallback.")
             _LOCAL_STORE[case_id] = case_data
@@ -108,63 +107,206 @@ class FirestoreService:
 
         url = f"{self.base_url}/consultations/{case_id}"
         fields = {k: _to_firestore_value(v) for k, v in case_data.items()}
-        payload = json.dumps({"fields": fields}).encode("utf-8")
-
-        req = urllib.request.Request(
-            url,
-            data=payload,
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Content-Type": "application/json"
-            },
-            method="PATCH"
-        )
+        payload = {"fields": fields}
 
         try:
-            with urllib.request.urlopen(req) as resp:
-                resp_data = json.loads(resp.read().decode("utf-8"))
-                logger.info(f"Successfully saved consultation {case_id} to Firestore.")
-                _LOCAL_STORE[case_id] = case_data
-                return case_data
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.patch(
+                    url,
+                    json=payload,
+                    headers={
+                        "Authorization": f"Bearer {token}",
+                        "Content-Type": "application/json"
+                    }
+                )
+                if resp.status_code in (200, 201):
+                    logger.info(f"Successfully saved consultation {case_id} to Firestore.")
+                    _LOCAL_STORE[case_id] = case_data
+                    return case_data
+                else:
+                    logger.warning(f"Firestore save returned status {resp.status_code}: {resp.text}")
+                    _LOCAL_STORE[case_id] = case_data
+                    return case_data
         except Exception as e:
             logger.error(f"Failed to write consultation to Firestore: {e}. Storing locally.")
             _LOCAL_STORE[case_id] = case_data
             return case_data
 
-    def list_user_consultations(self, auth_id: str) -> List[Dict[str, Any]]:
-        """Queries all consultations for a given Firebase Auth ID."""
+    def save_consultation(self, case_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Synchronous wrapper for save_consultation."""
+        now_iso = datetime.now(timezone.utc).isoformat()
+        case_id = case_data.get("id") or f"case_{int(datetime.now(timezone.utc).timestamp() * 1000)}"
+        case_data["id"] = case_id
+        case_data["updated_at"] = now_iso
+        if "created_at" not in case_data:
+            case_data["created_at"] = now_iso
+
         token = _get_access_token()
         if not token:
-            return [c for c in _LOCAL_STORE.values() if c.get("auth_id") == auth_id]
+            _LOCAL_STORE[case_id] = case_data
+            return case_data
 
-        url = f"{self.base_url}/consultations?pageSize=100"
-        req = urllib.request.Request(
-            url,
-            headers={"Authorization": f"Bearer {token}"},
-            method="GET"
-        )
+        url = f"{self.base_url}/consultations/{case_id}"
+        fields = {k: _to_firestore_value(v) for k, v in case_data.items()}
+        payload = {"fields": fields}
 
-        results: List[Dict[str, Any]] = []
         try:
-            with urllib.request.urlopen(req) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-                docs = data.get("documents", [])
-                for doc in docs:
-                    raw_fields = doc.get("fields", {})
-                    parsed = {k: _from_firestore_value(v) for k, v in raw_fields.items()}
-                    if parsed.get("auth_id") == auth_id:
-                        results.append(parsed)
-            # Sort by created_at descending
-            results.sort(key=lambda x: str(x.get("created_at", "")), reverse=True)
-            return results
+            with httpx.Client(timeout=10.0) as client:
+                resp = client.patch(
+                    url,
+                    json=payload,
+                    headers={
+                        "Authorization": f"Bearer {token}",
+                        "Content-Type": "application/json"
+                    }
+                )
+                if resp.status_code in (200, 201):
+                    _LOCAL_STORE[case_id] = case_data
+                    return case_data
+                _LOCAL_STORE[case_id] = case_data
+                return case_data
         except Exception as e:
-            logger.warning(f"Error querying Firestore consultations: {e}. Falling back to local.")
+            logger.error(f"Sync write to Firestore failed: {e}. Storing locally.")
+            _LOCAL_STORE[case_id] = case_data
+            return case_data
+
+    async def list_user_consultations_async(self, auth_id: str) -> List[Dict[str, Any]]:
+        """
+        Asynchronously queries consultations for a given Firebase Auth ID using Firestore runQuery.
+        Performs an indexed server-side field filter rather than downloading the entire collection.
+        """
+        token = await asyncio.to_thread(_get_access_token)
+        if not token:
             matched = [c for c in _LOCAL_STORE.values() if c.get("auth_id") == auth_id]
             matched.sort(key=lambda x: str(x.get("created_at", "")), reverse=True)
             return matched
 
+        # Use structuredQuery to query by auth_id directly on Firestore
+        url = f"{self.base_url}:runQuery"
+        query_payload = {
+            "structuredQuery": {
+                "from": [{"collectionId": "consultations"}],
+                "where": {
+                    "fieldFilter": {
+                        "field": {"fieldPath": "auth_id"},
+                        "op": "EQUAL",
+                        "value": {"stringValue": auth_id}
+                    }
+                }
+            }
+        }
+
+        results: List[Dict[str, Any]] = []
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.post(
+                    url,
+                    json=query_payload,
+                    headers={
+                        "Authorization": f"Bearer {token}",
+                        "Content-Type": "application/json"
+                    }
+                )
+                if resp.status_code == 200:
+                    entries = resp.json()
+                    for entry in entries:
+                        doc = entry.get("document")
+                        if doc:
+                            raw_fields = doc.get("fields", {})
+                            parsed = {k: _from_firestore_value(v) for k, v in raw_fields.items()}
+                            results.append(parsed)
+                    results.sort(key=lambda x: str(x.get("created_at", "")), reverse=True)
+                    return results
+                else:
+                    logger.warning(f"Firestore runQuery returned status {resp.status_code}")
+                    matched = [c for c in _LOCAL_STORE.values() if c.get("auth_id") == auth_id]
+                    matched.sort(key=lambda x: str(x.get("created_at", "")), reverse=True)
+                    return matched
+        except Exception as e:
+            logger.warning(f"Async query to Firestore failed: {e}. Falling back to local.")
+            matched = [c for c in _LOCAL_STORE.values() if c.get("auth_id") == auth_id]
+            matched.sort(key=lambda x: str(x.get("created_at", "")), reverse=True)
+            return matched
+
+    def list_user_consultations(self, auth_id: str) -> List[Dict[str, Any]]:
+        """Synchronous wrapper for list_user_consultations."""
+        token = _get_access_token()
+        if not token:
+            matched = [c for c in _LOCAL_STORE.values() if c.get("auth_id") == auth_id]
+            matched.sort(key=lambda x: str(x.get("created_at", "")), reverse=True)
+            return matched
+
+        url = f"{self.base_url}:runQuery"
+        query_payload = {
+            "structuredQuery": {
+                "from": [{"collectionId": "consultations"}],
+                "where": {
+                    "fieldFilter": {
+                        "field": {"fieldPath": "auth_id"},
+                        "op": "EQUAL",
+                        "value": {"stringValue": auth_id}
+                    }
+                }
+            }
+        }
+
+        results: List[Dict[str, Any]] = []
+        try:
+            with httpx.Client(timeout=10.0) as client:
+                resp = client.post(
+                    url,
+                    json=query_payload,
+                    headers={
+                        "Authorization": f"Bearer {token}",
+                        "Content-Type": "application/json"
+                    }
+                )
+                if resp.status_code == 200:
+                    entries = resp.json()
+                    for entry in entries:
+                        doc = entry.get("document")
+                        if doc:
+                            raw_fields = doc.get("fields", {})
+                            parsed = {k: _from_firestore_value(v) for k, v in raw_fields.items()}
+                            results.append(parsed)
+                    results.sort(key=lambda x: str(x.get("created_at", "")), reverse=True)
+                    return results
+                matched = [c for c in _LOCAL_STORE.values() if c.get("auth_id") == auth_id]
+                matched.sort(key=lambda x: str(x.get("created_at", "")), reverse=True)
+                return matched
+        except Exception as e:
+            logger.warning(f"Sync query to Firestore failed: {e}. Falling back to local.")
+            matched = [c for c in _LOCAL_STORE.values() if c.get("auth_id") == auth_id]
+            matched.sort(key=lambda x: str(x.get("created_at", "")), reverse=True)
+            return matched
+
+    async def get_consultation_async(self, case_id: str) -> Optional[Dict[str, Any]]:
+        """Asynchronously retrieves a single consultation document by ID."""
+        if case_id in _LOCAL_STORE:
+            return _LOCAL_STORE[case_id]
+
+        token = await asyncio.to_thread(_get_access_token)
+        if not token:
+            return None
+
+        url = f"{self.base_url}/consultations/{case_id}"
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(
+                    url,
+                    headers={"Authorization": f"Bearer {token}"}
+                )
+                if resp.status_code == 200:
+                    doc = resp.json()
+                    fields = doc.get("fields", {})
+                    return {k: _from_firestore_value(v) for k, v in fields.items()}
+                return None
+        except Exception as e:
+            logger.warning(f"Failed to fetch document {case_id} asynchronously: {e}")
+            return None
+
     def get_consultation(self, case_id: str) -> Optional[Dict[str, Any]]:
-        """Retrieves a single consultation document by ID."""
+        """Retrieves a single consultation document by ID synchronously."""
         if case_id in _LOCAL_STORE:
             return _LOCAL_STORE[case_id]
 
@@ -173,19 +315,19 @@ class FirestoreService:
             return None
 
         url = f"{self.base_url}/consultations/{case_id}"
-        req = urllib.request.Request(
-            url,
-            headers={"Authorization": f"Bearer {token}"},
-            method="GET"
-        )
-
         try:
-            with urllib.request.urlopen(req) as resp:
-                doc = json.loads(resp.read().decode("utf-8"))
-                fields = doc.get("fields", {})
-                return {k: _from_firestore_value(v) for k, v in fields.items()}
+            with httpx.Client(timeout=10.0) as client:
+                resp = client.get(
+                    url,
+                    headers={"Authorization": f"Bearer {token}"}
+                )
+                if resp.status_code == 200:
+                    doc = resp.json()
+                    fields = doc.get("fields", {})
+                    return {k: _from_firestore_value(v) for k, v in fields.items()}
+                return None
         except Exception as e:
-            logger.warning(f"Failed to fetch document {case_id} from Firestore: {e}")
+            logger.warning(f"Failed to fetch document {case_id} synchronously: {e}")
             return None
 
 

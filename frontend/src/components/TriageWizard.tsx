@@ -121,39 +121,44 @@ export function TriageWizard({ language, onTriageComplete, onProceedToChecklist 
           <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2">
             {t.quickScenarios}
           </label>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Quick legal scenario templates">
             <button
               type="button"
               onClick={() => applyScenario("cheque")}
-              className="text-xs bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 hover:border-amber-500/50 px-3 py-1.5 rounded-lg transition-colors"
+              aria-label="Load scenario: Cheque Bounce under Section 138 NI Act"
+              className="text-xs bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 hover:border-amber-500/50 px-3 py-1.5 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400"
             >
               💼 {t.scenarioCheque}
             </button>
             <button
               type="button"
               onClick={() => applyScenario("rent")}
-              className="text-xs bg-slate-800 hover:bg-slate-700 text-sky-300 border border-slate-700 hover:border-sky-500/50 px-3 py-1.5 rounded-lg transition-colors"
+              aria-label="Load scenario: Tenancy and Security Deposit Dispute"
+              className="text-xs bg-slate-800 hover:bg-slate-700 text-sky-300 border border-slate-700 hover:border-sky-500/50 px-3 py-1.5 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400"
             >
               🏠 {t.scenarioRent}
             </button>
             <button
               type="button"
               onClick={() => applyScenario("cyber")}
-              className="text-xs bg-slate-800 hover:bg-slate-700 text-rose-300 border border-slate-700 hover:border-rose-500/50 px-3 py-1.5 rounded-lg transition-colors"
+              aria-label="Load scenario: Cyber Crime and Financial Fraud"
+              className="text-xs bg-slate-800 hover:bg-slate-700 text-rose-300 border border-slate-700 hover:border-rose-500/50 px-3 py-1.5 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400"
             >
               🛡️ {t.scenarioCyber}
             </button>
             <button
               type="button"
               onClick={() => applyScenario("consumer")}
-              className="text-xs bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-slate-700 hover:border-emerald-500/50 px-3 py-1.5 rounded-lg transition-colors"
+              aria-label="Load scenario: Consumer Protection and Defective Goods"
+              className="text-xs bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-slate-700 hover:border-emerald-500/50 px-3 py-1.5 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400"
             >
               🛒 {t.scenarioConsumer}
             </button>
             <button
               type="button"
               onClick={() => applyScenario("police")}
-              className="text-xs bg-slate-800 hover:bg-slate-700 text-purple-300 border border-slate-700 hover:border-purple-500/50 px-3 py-1.5 rounded-lg transition-colors"
+              aria-label="Load scenario: Police Complaint and BNS/BNSS matter"
+              className="text-xs bg-slate-800 hover:bg-slate-700 text-purple-300 border border-slate-700 hover:border-purple-500/50 px-3 py-1.5 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400"
             >
               ⚖️ {t.scenarioPolice}
             </button>
@@ -162,22 +167,28 @@ export function TriageWizard({ language, onTriageComplete, onProceedToChecklist 
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
+            <label htmlFor="grievance-narrative" className="sr-only">
+              {t.intakeTitle}
+            </label>
             <textarea
+              id="grievance-narrative"
               rows={4}
               value={narrative}
               onChange={(e) => setNarrative(e.target.value)}
               placeholder={t.placeholderNarrative}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 text-sm leading-relaxed resize-y"
+              aria-required="true"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 text-sm leading-relaxed resize-y"
               required
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1.5">
+              <label htmlFor="state-select" className="block text-xs font-semibold text-slate-300 mb-1.5">
                 {t.stateLabel}
               </label>
               <select
+                id="state-select"
                 value={selectedState}
                 onChange={(e) => setSelectedState(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
@@ -191,10 +202,11 @@ export function TriageWizard({ language, onTriageComplete, onProceedToChecklist 
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1.5">
+              <label htmlFor="citizen-role" className="block text-xs font-semibold text-slate-300 mb-1.5">
                 {t.roleLabel}
               </label>
               <input
+                id="citizen-role"
                 type="text"
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
@@ -204,8 +216,12 @@ export function TriageWizard({ language, onTriageComplete, onProceedToChecklist 
           </div>
 
           {error && (
-            <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-800/40 text-rose-300 text-xs flex items-center space-x-2">
-              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="p-3 rounded-xl bg-rose-950/40 border border-rose-800/40 text-rose-300 text-xs flex items-center space-x-2"
+            >
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" aria-hidden="true" />
               <span>{error}</span>
             </div>
           )}
@@ -214,16 +230,17 @@ export function TriageWizard({ language, onTriageComplete, onProceedToChecklist 
             <button
               type="submit"
               disabled={loading || !narrative.trim()}
-              className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold px-6 py-3 rounded-xl transition-all shadow-lg shadow-amber-500/10 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              aria-busy={loading}
+              className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold px-6 py-3 rounded-xl transition-all shadow-lg shadow-amber-500/10 disabled:opacity-50 disabled:cursor-not-allowed text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
             >
               {loading ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" aria-hidden="true" />
                   <span>{t.analyzing}</span>
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4" />
+                  <Sparkles className="w-4 h-4" aria-hidden="true" />
                   <span>{t.triageButton}</span>
                 </>
               )}
@@ -234,7 +251,10 @@ export function TriageWizard({ language, onTriageComplete, onProceedToChecklist 
 
       {/* Triage Results Display */}
       {result && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-6 shadow-2xl animate-fade-in">
+        <div
+          aria-live="polite"
+          className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-6 shadow-2xl animate-fade-in"
+        >
           {/* Header & Badges */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
             <div>

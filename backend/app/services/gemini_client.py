@@ -1,7 +1,7 @@
 import os
 import json
 import logging
-from typing import Type, TypeVar, Optional, Any
+from typing import Type, TypeVar, Optional, Any, Dict
 from pydantic import BaseModel
 from app.config import settings
 
@@ -40,6 +40,11 @@ def get_genai_client():
     return _client
 
 
+# In-memory LRU-like response cache for high-efficiency deduplication
+_GEMINI_CACHE: Dict[str, Any] = {}
+_MAX_CACHE_ENTRIES = 256
+
+
 def call_gemini_structured(
     prompt: str,
     response_schema: Type[T],
@@ -48,17 +53,24 @@ def call_gemini_structured(
 ) -> T:
     """
     Executes structured generation using Gemini Flash via google-genai.
+    Includes in-memory caching for repeated legal queries to maximize efficiency and responsiveness.
     Falls back gracefully to mock_fallback_factory if API credentials are not provided or error occurs.
     """
+    import hashlib
+    cache_key = hashlib.sha256(f"{prompt.strip()}_{response_schema.__name__}".encode("utf-8")).hexdigest()
+    if cache_key in _GEMINI_CACHE:
+        logger.info("Serving structured response from in-memory efficiency cache.")
+        return _GEMINI_CACHE[cache_key]
+
     client = get_genai_client()
-    
+
     if client:
         # Determine model
         models_to_try = [settings.DEFAULT_MODEL, "gemini-2.5-flash"]
         for model_name in models_to_try:
             try:
                 from google.genai import types
-                
+
                 config = types.GenerateContentConfig(
                     response_mime_type="application/json",
                     response_schema=response_schema,
@@ -72,10 +84,13 @@ def call_gemini_structured(
                     contents=prompt,
                     config=config,
                 )
-                
+
                 if response.text:
                     parsed = json.loads(response.text)
-                    return response_schema.model_validate(parsed)
+                    validated = response_schema.model_validate(parsed)
+                    if len(_GEMINI_CACHE) < _MAX_CACHE_ENTRIES:
+                        _GEMINI_CACHE[cache_key] = validated
+                    return validated
             except Exception as ex:
                 logger.warning(f"Error calling Gemini model '{model_name}': {ex}. Trying fallback if available.")
                 continue
@@ -83,6 +98,9 @@ def call_gemini_structured(
     # If client is not available or calls failed, use mock fallback for guaranteed local operation
     if mock_fallback_factory:
         logger.info("Using domain-grounded fallback response.")
-        return mock_fallback_factory()
+        result = mock_fallback_factory()
+        if len(_GEMINI_CACHE) < _MAX_CACHE_ENTRIES:
+            _GEMINI_CACHE[cache_key] = result
+        return result
 
     raise RuntimeError("Gemini API call failed and no fallback factory was provided.")
