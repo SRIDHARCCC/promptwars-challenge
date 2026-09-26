@@ -8,7 +8,9 @@ import {
   signInAnonymously,
   signOut,
   onAuthStateChanged,
-  User
+  initFirebaseWithConfig,
+  User,
+  Auth
 } from "@/lib/firebase";
 
 interface AuthContextType {
@@ -42,6 +44,7 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [activeAuth, setActiveAuth] = useState<Auth>(auth);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [signingIn, setSigningIn] = useState(false);
@@ -63,16 +66,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsGuest(true);
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
-        setIsGuest(false);
-        localStorage.removeItem("satta_thozhan_is_guest");
-      }
-      setLoading(false);
-    });
+    let unsub: () => void = () => {};
 
-    return () => unsubscribe();
+    async function bootstrapAuth() {
+      let liveAuth = auth;
+      try {
+        const res = await fetch("/api/auth-config");
+        if (res.ok) {
+          const cfg = await res.json();
+          if (cfg.apiKey && cfg.apiKey !== "demo-api-key") {
+            liveAuth = await initFirebaseWithConfig(cfg);
+            setActiveAuth(liveAuth);
+          }
+        }
+      } catch (e) {
+        console.warn("Could not load runtime auth config:", e);
+      }
+
+      unsub = onAuthStateChanged(liveAuth, (currentUser) => {
+        setUser(currentUser);
+        if (currentUser) {
+          setIsGuest(false);
+          localStorage.removeItem("satta_thozhan_is_guest");
+        }
+        setLoading(false);
+      });
+    }
+
+    bootstrapAuth();
+
+    return () => unsub();
   }, []);
 
   const dismissNotice = () => setAuthNotice(null);
@@ -82,7 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthNotice(null);
 
     try {
-      await signInWithPopup(auth, googleProvider);
+      await signInWithPopup(activeAuth, googleProvider);
       setIsGuest(false);
       localStorage.removeItem("satta_thozhan_is_guest");
     } catch (error: unknown) {
@@ -110,7 +133,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSigningIn(true);
     setAuthNotice(null);
     try {
-      await signInAnonymously(auth);
+      await signInAnonymously(activeAuth);
       setIsGuest(true);
       localStorage.setItem("satta_thozhan_is_guest", "true");
       setAuthNotice("Connected to Firebase Anonymous Session.");
@@ -126,7 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOutUser = async () => {
     try {
-      await signOut(auth);
+      await signOut(activeAuth);
     } catch (error) {
       console.error("Sign out error", error);
     }
