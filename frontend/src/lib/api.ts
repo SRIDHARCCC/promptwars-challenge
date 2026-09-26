@@ -7,7 +7,24 @@ import {
   SavedCase
 } from "@/types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+let dynamicApiUrl = "";
+
+export function setApiBaseUrl(url: string) {
+  if (url) {
+    dynamicApiUrl = url.replace(/\/$/, "");
+  }
+}
+
+export function getApiBaseUrl(): string {
+  if (dynamicApiUrl) return dynamicApiUrl;
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host.includes("satta-thozhan-frontend-") && host.includes(".run.app")) {
+      return `https://${host.replace("satta-thozhan-frontend-", "satta-thozhan-backend-")}`;
+    }
+  }
+  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+}
 
 export async function fetchTriage(
   narrative: string,
@@ -15,7 +32,8 @@ export async function fetchTriage(
   location_state: string = "Tamil Nadu",
   role: string = "complainant"
 ): Promise<TriageResponse> {
-  const res = await fetch(`${API_BASE_URL}/api/triage`, {
+  const baseUrl = getApiBaseUrl();
+  const res = await fetch(`${baseUrl}/api/triage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ narrative, language, location_state, role }),
@@ -32,7 +50,8 @@ export async function fetchChecklist(
   narrative?: string,
   language: string = "en"
 ): Promise<ChecklistResponse> {
-  const res = await fetch(`${API_BASE_URL}/api/checklist`, {
+  const baseUrl = getApiBaseUrl();
+  const res = await fetch(`${baseUrl}/api/checklist`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ category, narrative, language }),
@@ -45,7 +64,8 @@ export async function fetchChecklist(
 }
 
 export async function analyzeNoticeText(text: string): Promise<NoticeAnalysisResponse> {
-  const res = await fetch(`${API_BASE_URL}/api/notice/analyze-text`, {
+  const baseUrl = getApiBaseUrl();
+  const res = await fetch(`${baseUrl}/api/notice/analyze-text`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ text }),
@@ -58,10 +78,11 @@ export async function analyzeNoticeText(text: string): Promise<NoticeAnalysisRes
 }
 
 export async function uploadNoticeFile(file: File): Promise<NoticeAnalysisResponse> {
+  const baseUrl = getApiBaseUrl();
   const formData = new FormData();
   formData.append("file", file);
 
-  const res = await fetch(`${API_BASE_URL}/api/notice/upload`, {
+  const res = await fetch(`${baseUrl}/api/notice/upload`, {
     method: "POST",
     body: formData,
   });
@@ -83,7 +104,8 @@ export async function generatePrepSheet(payload: {
   missing_documents: string[];
   language?: string;
 }): Promise<PrepSheetResponse> {
-  const res = await fetch(`${API_BASE_URL}/api/prepsheet`, {
+  const baseUrl = getApiBaseUrl();
+  const res = await fetch(`${baseUrl}/api/prepsheet`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -110,7 +132,8 @@ export async function saveCaseToFirestore(payload: {
   };
   prep_sheet?: PrepSheetResponse;
 }): Promise<SavedCase> {
-  const res = await fetch(`${API_BASE_URL}/api/cases`, {
+  const baseUrl = getApiBaseUrl();
+  const res = await fetch(`${baseUrl}/api/cases`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -123,7 +146,8 @@ export async function saveCaseToFirestore(payload: {
 }
 
 export async function fetchUserCases(auth_id: string): Promise<SavedCase[]> {
-  const res = await fetch(`${API_BASE_URL}/api/cases?auth_id=${encodeURIComponent(auth_id)}`, {
+  const baseUrl = getApiBaseUrl();
+  const res = await fetch(`${baseUrl}/api/cases?auth_id=${encodeURIComponent(auth_id)}`, {
     method: "GET",
   });
   if (!res.ok) {
@@ -132,4 +156,3 @@ export async function fetchUserCases(auth_id: string): Promise<SavedCase[]> {
   }
   return res.json();
 }
-

@@ -12,6 +12,7 @@ import {
   User,
   Auth
 } from "@/lib/firebase";
+import { setApiBaseUrl } from "@/lib/api";
 
 interface AuthContextType {
   user: User | null;
@@ -74,6 +75,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const res = await fetch("/api/auth-config");
         if (res.ok) {
           const cfg = await res.json();
+          if (cfg.apiUrl) {
+            setApiBaseUrl(cfg.apiUrl);
+          }
           if (cfg.apiKey && cfg.apiKey !== "demo-api-key") {
             liveAuth = await initFirebaseWithConfig(cfg);
             setActiveAuth(liveAuth);

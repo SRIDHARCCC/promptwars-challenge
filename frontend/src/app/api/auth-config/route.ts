@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const env = process.env;
   const config = {
+    apiUrl: env.API_URL || env.NEXT_PUBLIC_API_URL || env["NEXT_PUBLIC_API_URL"] || "",
     apiKey: env.FIREBASE_API_KEY || env["NEXT_PUBLIC_FIREBASE_API_KEY"] || "",
     authDomain: env.FIREBASE_AUTH_DOMAIN || env["NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN"] || "",
     projectId: env.FIREBASE_PROJECT_ID || env["NEXT_PUBLIC_FIREBASE_PROJECT_ID"] || "",
