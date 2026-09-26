@@ -21,6 +21,13 @@ class PrepSheetRequest(BaseModel):
     language: str = Field(default="en", description="'en' or 'ta'")
 
 
+class EvidenceReadinessStatus(BaseModel):
+    ready_count: int = Field(default=0, description="Count of ready documents")
+    missing_count: int = Field(default=0, description="Count of missing documents")
+    ready: List[str] = Field(default_factory=list, description="List of ready document names")
+    missing: List[str] = Field(default_factory=list, description="List of missing document names")
+
+
 class PrepSheetResponse(BaseModel):
     title: str
     client_name: str
@@ -30,7 +37,7 @@ class PrepSheetResponse(BaseModel):
     factual_synopsis_tamil: Optional[str] = None
     chronological_timeline: List[TimelineEvent]
     relief_sought_breakdown: List[str]
-    evidence_readiness_status: dict  # {"ready_count": int, "missing_count": int, "ready": [], "missing": []}
+    evidence_readiness_status: EvidenceReadinessStatus = Field(default_factory=EvidenceReadinessStatus)
     top_questions_for_advocate: List[str]
     estimated_forum_and_process: str
     advocate_notes_section: str = "Space for advocate's consultation notes, court fee calculation, and case diary entry."

@@ -1,7 +1,7 @@
 import google.adk as adk
 from typing import List
 from app.config import settings
-from app.schemas.prepsheet import PrepSheetRequest, PrepSheetResponse, TimelineEvent
+from app.schemas.prepsheet import PrepSheetRequest, PrepSheetResponse, TimelineEvent, EvidenceReadinessStatus
 from app.services.gemini_client import call_gemini_structured
 
 PREPSHEET_INSTRUCTION = """
@@ -82,12 +82,12 @@ def _generate_mock_prepsheet(req: PrepSheetRequest) -> PrepSheetResponse:
         factual_synopsis_tamil=synopsis_ta,
         chronological_timeline=timeline,
         relief_sought_breakdown=relief_list,
-        evidence_readiness_status={
-            "ready_count": ready_count,
-            "missing_count": missing_count,
-            "ready": req.ready_documents,
-            "missing": req.missing_documents
-        },
+        evidence_readiness_status=EvidenceReadinessStatus(
+            ready_count=ready_count,
+            missing_count=missing_count,
+            ready=list(req.ready_documents),
+            missing=list(req.missing_documents)
+        ),
         top_questions_for_advocate=questions,
         estimated_forum_and_process="Jurisdictional Civil / Consumer / Criminal Court. Initial step: Issue formal legal notice or file complaint with sworn affidavit.",
         advocate_notes_section="[For Advocate's Notes: Limitation, Territorial Jurisdiction, Required Court Fee Stamps, Next Hearing/Filing Target Date]",
@@ -111,9 +111,19 @@ def run_prepsheet(req: PrepSheetRequest) -> PrepSheetResponse:
     and 5 targeted, high-leverage legal questions for the citizen to ask their advocate.
     """
 
-    return call_gemini_structured(
+    res = call_gemini_structured(
         prompt=prompt,
         response_schema=PrepSheetResponse,
         system_instruction=PREPSHEET_INSTRUCTION,
         mock_fallback_factory=lambda: _generate_mock_prepsheet(req)
     )
+
+    # Ensure evidence readiness arrays are populated from request if omitted by LLM
+    if not res.evidence_readiness_status.ready and req.ready_documents:
+        res.evidence_readiness_status.ready = list(req.ready_documents)
+    if not res.evidence_readiness_status.missing and req.missing_documents:
+        res.evidence_readiness_status.missing = list(req.missing_documents)
+    res.evidence_readiness_status.ready_count = len(res.evidence_readiness_status.ready)
+    res.evidence_readiness_status.missing_count = len(res.evidence_readiness_status.missing)
+
+    return res

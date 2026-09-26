@@ -33,31 +33,37 @@ export function PrepSheetModal({
 
   const [prepSheet, setPrepSheet] = useState<PrepSheetResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [clientName, setClientName] = useState("Citizen Client");
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      try {
-        const data = await generatePrepSheet({
-          user_name: clientName,
-          case_title: `${category} Grievance Briefing`,
-          category: category || "General Dispute",
-          narrative: narrative || "Standard dispute details provided by citizen.",
-          relief_sought: "Full restoration of legal rights, financial recovery, and compensation for harassment.",
-          ready_documents: readyDocs,
-          missing_documents: missingDocs,
-          language: language
-        });
-        setPrepSheet(data);
-      } catch (err) {
-        console.error("Failed to generate prep sheet", err);
-      } finally {
-        setLoading(false);
-      }
+  const loadPrepSheet = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await generatePrepSheet({
+        user_name: clientName || "Citizen Client",
+        case_title: `${category || "Dispute"} Grievance Briefing`,
+        category: category || "General Dispute",
+        narrative: narrative || "Standard dispute details provided by citizen.",
+        relief_sought: "Full restoration of legal rights, financial recovery, and compensation for harassment.",
+        ready_documents: readyDocs || [],
+        missing_documents: missingDocs || [],
+        language: language
+      });
+      setPrepSheet(data);
+    } catch (err: unknown) {
+      console.error("Failed to generate prep sheet", err);
+      const msg = err instanceof Error ? err.message : "Failed to compile advocate prep sheet.";
+      setError(msg);
+    } finally {
+      setLoading(false);
     }
-    load();
-  }, [category, narrative, readyDocs, missingDocs, language, clientName]);
+  };
+
+  useEffect(() => {
+    loadPrepSheet();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category, narrative, language]);
 
   // Close on Escape key press for keyboard accessibility
   useEffect(() => {
@@ -131,6 +137,17 @@ export function PrepSheetModal({
               <div className="inline-block w-8 h-8 border-3 border-amber-500 border-t-transparent rounded-full animate-spin mb-3" aria-hidden="true" />
               <p className="text-sm text-slate-400">Compiling Advocate Consultation Prep Sheet...</p>
             </div>
+          ) : error ? (
+            <div className="py-16 text-center space-y-3" role="alert" aria-live="assertive">
+              <AlertCircle className="w-8 h-8 text-rose-400 mx-auto" aria-hidden="true" />
+              <p className="text-sm text-rose-300 font-medium">{error}</p>
+              <button
+                onClick={loadPrepSheet}
+                className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-4 py-1.5 rounded-lg text-xs transition-colors shadow"
+              >
+                Retry Generating Prep Sheet
+              </button>
+            </div>
           ) : prepSheet ? (
             <div className="border border-slate-800 print:border-black rounded-xl p-6 print:p-4 bg-slate-950/60 print:bg-white space-y-6 print:space-y-4">
               {/* Official Header */}
@@ -142,7 +159,7 @@ export function PrepSheetModal({
                   {prepSheet.title}
                 </h1>
                 <div className="flex flex-wrap justify-center items-center gap-x-4 gap-y-1 text-xs text-slate-400 print:text-black mt-2">
-                  <span><strong>Client:</strong> {prepSheet.client_name}</span>
+                  <span><strong>Client:</strong> {clientName || prepSheet.client_name}</span>
                   <span>•</span>
                   <span><strong>Category:</strong> {prepSheet.category}</span>
                   <span>•</span>
@@ -199,43 +216,52 @@ export function PrepSheetModal({
                 <h2 className="text-xs font-bold uppercase tracking-wider text-amber-400 print:text-black mb-2">
                   3. Document Readiness Audit
                 </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div className="bg-emerald-950/20 print:bg-slate-50 border border-emerald-900/30 print:border-black p-3 rounded-lg">
-                    <span className="font-bold text-emerald-400 print:text-black block mb-1">
-                      Ready Documents ({prepSheet.evidence_readiness_status.ready_count}):
-                    </span>
-                    <ul className="space-y-1 text-slate-300 print:text-black">
-                      {prepSheet.evidence_readiness_status.ready.length > 0 ? (
-                        prepSheet.evidence_readiness_status.ready.map((doc, idx) => (
-                          <li key={idx} className="flex items-center space-x-1.5">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 print:text-black shrink-0" />
-                            <span>{doc}</span>
-                          </li>
-                        ))
-                      ) : (
-                        <li className="text-slate-500">None marked ready</li>
-                      )}
-                    </ul>
-                  </div>
+                {(() => {
+                  const readyList = prepSheet.evidence_readiness_status?.ready || readyDocs || [];
+                  const missingList = prepSheet.evidence_readiness_status?.missing || missingDocs || [];
+                  const readyCount = prepSheet.evidence_readiness_status?.ready_count ?? readyList.length;
+                  const missingCount = prepSheet.evidence_readiness_status?.missing_count ?? missingList.length;
 
-                  <div className="bg-amber-950/20 print:bg-slate-50 border border-amber-900/30 print:border-black p-3 rounded-lg">
-                    <span className="font-bold text-amber-400 print:text-black block mb-1">
-                      Pending / Missing Documents ({prepSheet.evidence_readiness_status.missing_count}):
-                    </span>
-                    <ul className="space-y-1 text-slate-300 print:text-black">
-                      {prepSheet.evidence_readiness_status.missing.length > 0 ? (
-                        prepSheet.evidence_readiness_status.missing.map((doc, idx) => (
-                          <li key={idx} className="flex items-center space-x-1.5">
-                            <AlertCircle className="w-3.5 h-3.5 text-amber-400 print:text-black shrink-0" />
-                            <span>{doc}</span>
-                          </li>
-                        ))
-                      ) : (
-                        <li className="text-slate-500">All key documents collected</li>
-                      )}
-                    </ul>
-                  </div>
-                </div>
+                  return (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div className="bg-emerald-950/20 print:bg-slate-50 border border-emerald-900/30 print:border-black p-3 rounded-lg">
+                        <span className="font-bold text-emerald-400 print:text-black block mb-1">
+                          Ready Documents ({readyCount}):
+                        </span>
+                        <ul className="space-y-1 text-slate-300 print:text-black">
+                          {readyList.length > 0 ? (
+                            readyList.map((doc, idx) => (
+                              <li key={idx} className="flex items-center space-x-1.5">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 print:text-black shrink-0" />
+                                <span>{doc}</span>
+                              </li>
+                            ))
+                          ) : (
+                            <li className="text-slate-500">None marked ready</li>
+                          )}
+                        </ul>
+                      </div>
+
+                      <div className="bg-amber-950/20 print:bg-slate-50 border border-amber-900/30 print:border-black p-3 rounded-lg">
+                        <span className="font-bold text-amber-400 print:text-black block mb-1">
+                          Pending / Missing Documents ({missingCount}):
+                        </span>
+                        <ul className="space-y-1 text-slate-300 print:text-black">
+                          {missingList.length > 0 ? (
+                            missingList.map((doc, idx) => (
+                              <li key={idx} className="flex items-center space-x-1.5">
+                                <AlertCircle className="w-3.5 h-3.5 text-amber-400 print:text-black shrink-0" />
+                                <span>{doc}</span>
+                              </li>
+                            ))
+                          ) : (
+                            <li className="text-slate-500">All key documents collected</li>
+                          )}
+                        </ul>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* 5 Strategic Questions to Ask Your Advocate */}
